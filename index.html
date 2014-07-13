@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Timetrim</title>
+    <style>
+      .axis {
+        cursor: default;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      .events {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+
+    <svg id="chart"></svg>
+
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="bower_components/d3/d3.min.js" charset="utf-8"></script>
+    <script src="chart.js" charset="utf-8"></script>
+    <script>
+      var theChart = myChart()
+        .width(650).height(700)
+        .domain([8, 20])
+
+      var example_data = [ 8.32, 9.45, 11.75, 12.10, 13, 15.5, 16.34, 18.32, 20.43, 21.23 ]
+      //theChart.events(example_data)
+      d3.select('#chart').datum(example_data).call(theChart)
+
+      window.setTimeout(function() {
+          console.log("Auch!")
+          theChart.trim([11, 13])
+          d3.select('#chart').datum(example_data).call(theChart)
+        }, 3000)
+      </script>
+  </body>
+</html>
