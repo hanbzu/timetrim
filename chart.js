@@ -1,13 +1,13 @@
 function myChart(params) {
 
-  var margin = {top: 10, right: 20, bottom: 10, left: 55},
-      width = 900,
+  var margin = {top: 10, right: 20, bottom: 10, left: 50},
+      width = 70,
       height = 500,
       yValue = function(d) { return d[1]; },
       scale = d3.scale.linear(),
       domain = [ 9, 18 ],
       trim = [ 10, 16 ],
-      yAxis = d3.svg.axis().scale(scale).orient("right").tickSize(6, 0).tickFormat(formatTime),
+      //yAxis = d3.svg.axis().scale(scale).orient("right").tickSize(6, 0).tickFormat(formatTime),
       onUpdate = function() { console.log("onUpdate not defined") }
 
   function chart(selection) {
@@ -42,9 +42,9 @@ function myChart(params) {
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
       // Update the y-axis
-      g.select(".y.axis")
-          .attr("transform", "translate(" + 0 + ", 0)")
-          .call(yAxis)
+      //g.select(".y.axis")
+      //    .attr("transform", "translate(" + 0 + ", 0)")
+      //    .call(yAxis)
 
       // Update events
       g.select(".events")
@@ -188,12 +188,6 @@ function myChart(params) {
     height = _
     return chart
   };
-
-  chart.x = function(_) {
-    if (!arguments.length) return xValue
-    xValue = _
-    return chart
-  }
 
   chart.y = function(_) {
     if (!arguments.length) return yValue

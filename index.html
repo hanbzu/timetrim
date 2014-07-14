@@ -30,14 +30,13 @@
   </head>
   <body>
 
-    <svg id="chart"></svg>
+    <div id="chart"></div>
 
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="bower_components/d3/d3.min.js" charset="utf-8"></script>
     <script src="chart.js" charset="utf-8"></script>
     <script>
       var theChart = myChart()
-        .width(650).height(700)
         .domain([5, 24])
         .trim([10, 16])
 
@@ -51,7 +50,7 @@
             console.log("New trim limits", theChart.trim())  
           })
           d3.select('#chart').datum(example_data).call(theChart)
-        }, 3000)
+        }, 1000)
       </script>
   </body>
 </html>
