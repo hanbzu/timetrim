@@ -1,13 +1,13 @@
 function myChart(params) {
 
-  var margin = {top: 10, right: 20, bottom: 10, left: 50},
-      width = 70,
-      height = 500,
+  var margin = {top: 20, right: 20, bottom: 20, left: 100},
+      width = 150,
+      height = 800,
       yValue = function(d) { return d[1]; },
       scale = d3.scale.linear(),
       domain = [ 9, 18 ],
       trim = [ 10, 16 ],
-      //yAxis = d3.svg.axis().scale(scale).orient("right").tickSize(6, 0).tickFormat(formatTime),
+      markerRadius = 30,
       onUpdate = function() { console.log("onUpdate not defined") }
 
   function chart(selection) {
@@ -41,11 +41,6 @@ function myChart(params) {
       var g = svg.select("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
-      // Update the y-axis
-      //g.select(".y.axis")
-      //    .attr("transform", "translate(" + 0 + ", 0)")
-      //    .call(yAxis)
-
       // Update events
       g.select(".events")
           .attr("transform", "translate(" + 0 + ", 0)")
@@ -53,7 +48,6 @@ function myChart(params) {
 
       // Update trim limits
       g.select("#clip-rect")
-          .data([trim])
           .call(updateClipPath)
       g.select(".trim")
           .attr("transform", "translate(" + 0 + ", 0)")
@@ -65,10 +59,10 @@ function myChart(params) {
     selection.each(function(data) {
       d3.select(this)
         .transition().duration(750)
-        .attr("x", "-10")
-        .attr("y", function(d) { return scale(d[0]) })
-        .attr("width", 20)
-        .attr("height", function(d) { return scale(trim[1]) - scale(trim[0]) })
+        .attr("x", "-20")
+        .attr("y", scale(trim[0]))
+        .attr("width", 40)
+        .attr("height", scale(trim[1]) - scale(trim[0]))
     })
   }
 
@@ -78,7 +72,7 @@ function myChart(params) {
         selection
           .attr("cx", 0)
           .attr("cy", function(d) { return scale(d) })
-          .attr("r", 6)        
+          .attr("r", 12)        
       }
 
       var circle = d3.select(this).selectAll("circle")
@@ -100,6 +94,26 @@ function myChart(params) {
 
 
   function dragmove(d) {
+    var thisOne = d.i,
+        other = (thisOne == 0) ? 1 : 0
+    var mod = 0
+    var pos = +d3.select(this).attr("cy") + d3.event.dy
+    if (d.i == 0) {
+      mod = Math.min(Math.max(pos, scale(domain[0])), scale(trim[other]))
+      trim = [ scale.invert(mod), trim[1] ]
+    }
+    else {
+      mod = Math.max(pos, scale(trim[other]))
+      trim = [ trim[0], scale.invert(mod) ]
+    }
+    d3.select(this)
+      .attr("cy", mod);
+    d3.select(this.parentNode.parentNode).select("#clip-rect")
+      .attr("y", scale(trim[0]))
+      .attr("height", scale(trim[1]) - scale(trim[0]))
+  }
+
+  function dragmove2(d) {
     var thisOne = d.i,
         other = (thisOne == 0) ? 1 : 0
     var mod = 0
@@ -136,7 +150,7 @@ function myChart(params) {
         selection
           .attr("cx", 0)
           .attr("cy", function(d) { return scale(d.y) })
-          .attr("r", 14)        
+          .attr("r", markerRadius)        
       }
 
       var circle = d3.select(this).selectAll("circle")
