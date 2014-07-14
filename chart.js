@@ -1,13 +1,14 @@
 function myChart(params) {
 
-  var margin = {top: 20, right: 20, bottom: 20, left: 55},
+  var margin = {top: 10, right: 20, bottom: 10, left: 55},
       width = 900,
-      height = 600,
+      height = 500,
       yValue = function(d) { return d[1]; },
-      yScale = d3.scale.linear(),
+      scale = d3.scale.linear(),
       domain = [ 9, 18 ],
       trim = [ 10, 16 ],
-      yAxis = d3.svg.axis().scale(yScale).orient("right").tickSize(6, 0).tickFormat(formatTime)
+      yAxis = d3.svg.axis().scale(scale).orient("right").tickSize(6, 0).tickFormat(formatTime),
+      onUpdate = function() { console.log("onUpdate not defined") }
 
   function chart(selection) {
 
@@ -15,7 +16,7 @@ function myChart(params) {
     selection.each(function(data) {
 
       // Update the y-scale
-      yScale
+      scale
         .domain(domain)
         .range([0, height - margin.top - margin.bottom])
 
@@ -24,17 +25,13 @@ function myChart(params) {
 
       // Otherwise, create the skeletal chart.
       var gEnter = svg.enter().append("svg").append("g")
-      var clip = gEnter.append("defs").append("clipPath").attr("id", "clip")
+      gEnter.append("defs").append("clipPath").attr("id", "clip")
         .append("rect")
         .attr("id", "clip-rect")
-/*        .attr("x", "-10")
-        .attr("y", "0")
-        .attr("width", 20)
-        .attr("height", height);*/
       gEnter.append("g").attr("class", "y axis")
-      gEnter.append("g").attr("class", "trim")
       gEnter.append("g").attr("class", "events")
         .attr("clip-path", "url(#clip)")
+      gEnter.append("g").attr("class", "trim")
 
       // Update outer dimensions
       svg.attr("width", width)
@@ -69,9 +66,9 @@ function myChart(params) {
       d3.select(this)
         .transition().duration(750)
         .attr("x", "-10")
-        .attr("y", function(d) { return yScale(d[0]) })
+        .attr("y", function(d) { return scale(d[0]) })
         .attr("width", 20)
-        .attr("height", function(d) { return yScale(trim[1]) - yScale(trim[0]) })
+        .attr("height", function(d) { return scale(trim[1]) - scale(trim[0]) })
     })
   }
 
@@ -80,7 +77,7 @@ function myChart(params) {
       function updateCircle(selection) {
         selection
           .attr("cx", 0)
-          .attr("cy", function(d) { return yScale(d) })
+          .attr("cy", function(d) { return scale(d) })
           .attr("r", 6)        
       }
 
@@ -101,17 +98,49 @@ function myChart(params) {
     })
   }
 
+
+  function dragmove(d) {
+    var thisOne = d.i,
+        other = (thisOne == 0) ? 1 : 0
+    var mod = 0
+    if (d.i == 0) {
+      mod = Math.min(Math.max(+d3.select(this).attr("cy")  + d3.event.dy, scale(domain[0])), scale(trim[other]))
+      trim = [ scale.invert(mod), trim[1] ]
+    }
+    else {
+      mod = Math.max(+d3.select(this).attr("cy") + d3.event.dy, scale(trim[other]))
+      trim = [ trim[0], scale.invert(mod) ]
+    }
+    d3.select(this)
+      .attr("cy", mod);
+    d3.select(this.parentNode.parentNode).select("#clip-rect")
+      .data([trim])
+      .attr("x", "-10")
+      .attr("y", function(d) { return scale(d[0]) })
+      .attr("width", 20)
+      .attr("height", function(d) { return scale(trim[1]) - scale(trim[0]) })
+  }
+
+  function dragend(d) {
+    onUpdate()
+  }
+
+  var drag = d3.behavior.drag()
+    .on("drag", dragmove)
+    .on("dragend", dragend)
+
   function updateTrimMarkers(selection) {
+
     selection.each(function(data) {
       function updateCircle(selection) {
         selection
           .attr("cx", 0)
-          .attr("cy", function(d) { return yScale(d) })
-          .attr("r", 12)        
+          .attr("cy", function(d) { return scale(d.y) })
+          .attr("r", 14)        
       }
 
       var circle = d3.select(this).selectAll("circle")
-          .data(trim)
+          .data(trim.map(function(d, i) { return { y: d, i: i } }))
 
       circle
         .transition().duration(750)
@@ -120,6 +149,7 @@ function myChart(params) {
       circle
         .enter().append("circle")
         .call(updateCircle)
+        .call(drag)
 
       circle.exit()
         .transition().duration(750)
@@ -180,6 +210,12 @@ function myChart(params) {
   chart.trim = function(_) {
     if (!arguments.length) return trim
     trim = _
+    return chart
+  }
+
+  chart.onUpdate = function(_) {
+    if (!arguments.length) return trim
+    onUpdate = _
     return chart
   }
 
