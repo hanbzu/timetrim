@@ -2,8 +2,9 @@
   "name": "timetrim",
   "version": "0.0.1",
   "authors": [
-    "Hibai Unzueta"
+    "Hibai Unzueta (http://hibaiunzueta.com/)"
   ],
+  "main": "timetrim.js",
   "license": "MIT",
   "ignore": [
     "**/.*",
