@@ -13,5 +13,8 @@
     "test",
     "tests",
     "index.html"
-  ]
+  ],
+  "dependencies": {
+    "d3": "~3"
+  }
 }
