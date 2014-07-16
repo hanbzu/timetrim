@@ -3,7 +3,6 @@ function timetrim(params) {
   var margin = {top: 20, right: 20, bottom: 20, left: 100},
       width = 150,
       height = 800,
-      yValue = function(d) { return d[1]; },
       scale = d3.scale.linear(),
       domain = [ 9, 18 ],
       trim = [ 10, 16 ],
@@ -82,12 +81,11 @@ function timetrim(params) {
         .transition().duration(750)
         .call(updateCircle)
 
-      circle
-        .enter().append("circle")
+      circle.enter()
+        .append("circle")
         .call(updateCircle)
 
       circle.exit()
-        .transition().duration(750)
         .remove()
     })
   }
@@ -203,21 +201,17 @@ function timetrim(params) {
     return chart
   };
 
-  chart.y = function(_) {
-    if (!arguments.length) return yValue
-    yValue = _
-    return chart
-  }
-
   chart.domain = function(_) {
     if (!arguments.length) return domain
     domain = _
+    console.log(domain)
     return chart
   }
 
   chart.trim = function(_) {
     if (!arguments.length) return trim
     trim = _
+    console.log(trim)
     return chart
   }
 
