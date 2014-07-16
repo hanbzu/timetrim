@@ -1,13 +1,30 @@
 function timetrim(params) {
 
+  // Default style params
   var margin = {top: 20, right: 20, bottom: 20, left: 100},
       width = 150,
       height = 800,
-      scale = d3.scale.linear(),
-      domain = [ 9, 18 ],
-      trim = [ 10, 16 ],
-      markerRadius = 30,
-      onUpdate = function() { console.log("onUpdate not defined") }
+      markerRadius = 20
+
+  // Configurable methods
+  var onUpdate = function() { console.log("onUpdate not defined") },
+      parseTime = function(_) {
+        if (moment.isMoment(_)) return _
+        else return moment(_, 'HH:mm')
+      }
+
+  // Default functional params
+  var scale = d3.scale.linear(),
+      domain = [ '0:00', '24:00' ].map(parseTime),
+      trim = [ '5:00', '24:00' ].map(parseTime)
+
+  function toUnix(_) {
+    return _.unix()
+  }
+
+  function fromUnix(_) {
+    return moment(_, 'X')
+  }
 
   function chart(selection) {
 
@@ -16,7 +33,7 @@ function timetrim(params) {
 
       // Update the y-scale
       scale
-        .domain(domain)
+        .domain(domain.map(toUnix))
         .range([0, height - margin.top - margin.bottom])
 
       // Select the svg element, if it exists.
@@ -59,9 +76,9 @@ function timetrim(params) {
       d3.select(this)
         .transition().duration(750)
         .attr("x", "-20")
-        .attr("y", scale(trim[0]))
+        .attr("y", scale(toUnix(trim[0])))
         .attr("width", 40)
-        .attr("height", scale(trim[1]) - scale(trim[0]))
+        .attr("height", scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
     })
   }
 
@@ -70,8 +87,10 @@ function timetrim(params) {
       function updateCircle(selection) {
         selection
           .attr("cx", 0)
-          .attr("cy", function(d) { return scale(d) })
-          .attr("r", 12)        
+          .attr("cy", function(d) {
+            return scale(toUnix(parseTime(d)))
+          })
+          .attr("r", 12)
       }
 
       var circle = d3.select(this).selectAll("circle")
@@ -97,40 +116,19 @@ function timetrim(params) {
     var mod = 0
     var pos = +d3.select(this).attr("cy") + d3.event.dy
     if (d.i == 0) {
-      mod = Math.min(Math.max(pos, scale(domain[0])), scale(trim[other]))
-      trim = [ scale.invert(mod), trim[1] ]
+      mod = Math.min(Math.max(scale(toUnix(domain[0])) + 1, pos), scale(toUnix(trim[other])))
+      trim = [ fromUnix(scale.invert(mod)), trim[1] ]
     }
     else {
-      mod = Math.max(pos, scale(trim[other]))
-      trim = [ trim[0], scale.invert(mod) ]
+      mod = Math.max(Math.min(scale(toUnix(domain[1])) - 1, pos), scale(toUnix(trim[other])))
+      trim = [ trim[0], fromUnix(scale.invert(mod)) ]
     }
     d3.select(this)
       .attr("cy", mod);
     d3.select(this.parentNode.parentNode).select("#clip-rect")
-      .attr("y", scale(trim[0]))
-      .attr("height", scale(trim[1]) - scale(trim[0]))
-  }
-
-  function dragmove2(d) {
-    var thisOne = d.i,
-        other = (thisOne == 0) ? 1 : 0
-    var mod = 0
-    if (d.i == 0) {
-      mod = Math.min(Math.max(+d3.select(this).attr("cy")  + d3.event.dy, scale(domain[0])), scale(trim[other]))
-      trim = [ scale.invert(mod), trim[1] ]
-    }
-    else {
-      mod = Math.max(+d3.select(this).attr("cy") + d3.event.dy, scale(trim[other]))
-      trim = [ trim[0], scale.invert(mod) ]
-    }
-    d3.select(this)
-      .attr("cy", mod);
-    d3.select(this.parentNode.parentNode).select("#clip-rect")
-      .data([trim])
-      .attr("x", "-10")
-      .attr("y", function(d) { return scale(d[0]) })
-      .attr("width", 20)
-      .attr("height", function(d) { return scale(trim[1]) - scale(trim[0]) })
+      .attr("y", scale(toUnix(trim[0])))
+      .attr("height", scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
+    onUpdate()
   }
 
   function dragend(d) {
@@ -147,12 +145,12 @@ function timetrim(params) {
       function updateCircle(selection) {
         selection
           .attr("cx", 0)
-          .attr("cy", function(d) { return scale(d.y) })
+          .attr("cy", function(d) { return scale(toUnix(d.value)) })
           .attr("r", markerRadius)        
       }
 
       var circle = d3.select(this).selectAll("circle")
-          .data(trim.map(function(d, i) { return { y: d, i: i } }))
+          .data(trim.map(function(d, i) { return { value: d, i: i } }))
 
       circle
         .transition().duration(750)
@@ -203,15 +201,13 @@ function timetrim(params) {
 
   chart.domain = function(_) {
     if (!arguments.length) return domain
-    domain = _
-    console.log(domain)
+    domain = _.map(parseTime)
     return chart
   }
 
   chart.trim = function(_) {
     if (!arguments.length) return trim
-    trim = _
-    console.log(trim)
+    trim = _.map(parseTime)
     return chart
   }
 
