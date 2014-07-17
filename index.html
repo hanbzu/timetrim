@@ -17,12 +17,12 @@
     <script src="timetrim.js" charset="utf-8"></script>
     <script>
 
-      var domain = [ '05:00', '24:00' ],
+      var outerBounds = [ '05:00', '24:00' ],
           trim = [ '05:00', '24:00' ],
           trim2 = [ '07:00', '22:00' ]
 
       var theChart = timetrim()
-        .domain(domain)
+        .outerBounds(outerBounds)
         .trim(trim)
         .onUpdate(function() {
           console.log(

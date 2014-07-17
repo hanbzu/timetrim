@@ -4,10 +4,11 @@ function timetrim(params) {
   var margin = {top: 20, right: 20, bottom: 20, left: 100},
       width = 150,
       height = 800,
-      markerRadius = 20
+      markerRadius = 20,
+      rangeWidth = 16
 
   // Configurable methods
-  var onUpdate = function() { console.log("onUpdate not defined") },
+  var onUpdate = function() { console.log('onUpdate not defined') },
       parseTime = function(_) {
         if (moment.isMoment(_)) return _
         else return moment(_, 'HH:mm')
@@ -15,7 +16,8 @@ function timetrim(params) {
 
   // Default functional params
   var scale = d3.scale.linear(),
-      domain = [ '0:00', '24:00' ].map(parseTime),
+      lineFun = d3.svg.line().x(function(d) { return d.x }).y(function(d) { return d.y }),
+      outerBounds = [ '0:00', '24:00' ].map(parseTime),
       trim = [ '5:00', '24:00' ].map(parseTime)
 
   function toUnix(_) {
@@ -31,103 +33,204 @@ function timetrim(params) {
     // This is because we could have more than one selection?
     selection.each(function(data) {
 
-      // Update the y-scale
+      // Update the scale
       scale
-        .domain(domain.map(toUnix))
+        .domain(outerBounds.map(toUnix))
         .range([0, height - margin.top - margin.bottom])
 
       // Select the svg element, if it exists.
-      var svg = d3.select(this).selectAll("svg").data([data])
+      var svg = d3.select(this).selectAll('svg').data([data])
 
       // Otherwise, create the skeletal chart.
-      var gEnter = svg.enter().append("svg").append("g")
-      gEnter.append("defs").append("clipPath").attr("id", "clip")
-        .append("rect")
-        .attr("id", "clip-rect")
-      gEnter.append("g").attr("class", "y axis")
-      gEnter.append("g").attr("class", "events")
-        .attr("clip-path", "url(#clip)")
-      gEnter.append("g").attr("class", "trim")
-
+      var gEnter = svg.enter().append('svg').append('g')
+      // 1. Clip path
+      gEnter.append('defs').append('clipPath').attr('id', 'clip')
+        .append('rect')
+          .attr('id', 'clip-rect')
+      // 2. Axis
+      gEnter.append('g')
+          .attr('class', 'axis')
+        .append('path')
+          .attr('d', lineFun([ { x:0, y:0 }, { x:0, y:scale.range()[1] } ]))
+      // 3. Events
+      gEnter.append('g').attr('class', 'events')
+          .attr('clip-path', 'url(#clip)')
+        .append('rect')
+          .attr('x', -rangeWidth/2).attr('y', 0).attr('width', rangeWidth).attr('height', scale.range()[1])
+      // 4. Trim markers
+      //gEnter.append('g').attr('class', 'trim')
+      gEnter.append('g').attr('class', 'trim from')
+        .call(createMark)
+      gEnter.append('g').attr('class', 'trim to')
+        .call(createMark)
+            
       // Update outer dimensions
-      svg.attr("width", width)
-         .attr("height", height)
+      svg.attr('width', width)
+         .attr('height', height)
 
       // Update inner dimensions.
-      var g = svg.select("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+      var g = svg.select('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
 
       // Update events
-      g.select(".events")
-          .attr("transform", "translate(" + 0 + ", 0)")
+      g.select('.events')
+          .attr('transform', 'translate(' + 0 + ', 0)')
           .call(updateEvents)
 
       // Update trim limits
-      g.select("#clip-rect")
+      g.select('#clip-rect')
           .call(updateClipPath)
-      g.select(".trim")
-          .attr("transform", "translate(" + 0 + ", 0)")
+      /*g.select('.trim')
+          .attr('transform', 'translate(' + 0 + ', 0)')
           .call(updateTrimMarkers)
-    })
-  }
-
-  function updateClipPath(selection) {
-    selection.each(function(data) {
-      d3.select(this)
-        .transition().duration(750)
-        .attr("x", "-20")
-        .attr("y", scale(toUnix(trim[0])))
-        .attr("width", 40)
-        .attr("height", scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
-    })
-  }
-
-  function updateEvents(selection) {
-    selection.each(function(data) {
-      function updateCircle(selection) {
-        selection
-          .attr("cx", 0)
-          .attr("cy", function(d) {
-            return scale(toUnix(parseTime(d)))
-          })
-          .attr("r", 12)
-      }
-
-      var circle = d3.select(this).selectAll("circle")
-          .data(data)
-          
-      circle
-        .transition().duration(750)
-        .call(updateCircle)
-
-      circle.enter()
-        .append("circle")
-        .call(updateCircle)
-
-      circle.exit()
-        .remove()
+      */
+      g.select('.from').datum(trim[0])
+        .call(updateMark)
+      g.select('.to').datum(trim[1])
+        .call(updateMark)
     })
   }
 
 
   function dragmove(d) {
+    var yPixel = +d3.select(this).attr('cy') + d3.event.dy
+
+    function computeValue(bounds) {
+      bounds = bounds.map(toUnix).map(scale)
+      yPixel = Math.max(bounds[0], Math.min(yPixel, bounds[1]))
+      return fromUnix(scale.invert(yPixel))
+    }
+
+    if (d3.select(this.parentNode).classed('from')) // from
+      trim = [ computeValue([ outerBounds[0], trim[1] ]), trim[1] ]
+    else // to
+      trim = [ trim[0], computeValue([ trim[0], outerBounds[1] ]) ]
+
+    d3.select(this)
+      .attr('cy', yPixel)
+    d3.select(this.parentNode).select('text')
+      .attr('cy', yPixel)
+    d3.select(this.parentNode.parentNode).select('#clip-rect')
+      .attr('y', scale(toUnix(trim[0])))
+      .attr('height', scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
+    onUpdate()
+    /*
     var thisOne = d.i,
         other = (thisOne == 0) ? 1 : 0
     var mod = 0
-    var pos = +d3.select(this).attr("cy") + d3.event.dy
+    var pos = +d3.select(this).attr('cy') + d3.event.dy
     if (d.i == 0) {
-      mod = Math.min(Math.max(scale(toUnix(domain[0])) + 1, pos), scale(toUnix(trim[other])))
+      mod = Math.min(Math.max(scale(toUnix(outerBounds[0])) + 1, pos), scale(toUnix(trim[other])))
       trim = [ fromUnix(scale.invert(mod)), trim[1] ]
     }
     else {
-      mod = Math.max(Math.min(scale(toUnix(domain[1])) - 1, pos), scale(toUnix(trim[other])))
+      mod = Math.max(Math.min(scale(toUnix(outerBounds[1])) - 1, pos), scale(toUnix(trim[other])))
       trim = [ trim[0], fromUnix(scale.invert(mod)) ]
     }
     d3.select(this)
-      .attr("cy", mod);
-    d3.select(this.parentNode.parentNode).select("#clip-rect")
-      .attr("y", scale(toUnix(trim[0])))
-      .attr("height", scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
+      .attr('cy', mod);
+    d3.select(this.parentNode.parentNode).select('#clip-rect')
+      .attr('y', scale(toUnix(trim[0])))
+      .attr('height', scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
+    onUpdate()
+    */
+  }
+
+  var drag = d3.behavior.drag()
+    .on('drag', dragmove)
+
+  function updateMark(selection) {
+    selection.each(function(data) {
+      console.log(data)
+      var mark = d3.select(this)
+      mark.select('circle')
+        .transition().duration(750)
+        .attr('cy', function(d) { return scale(toUnix(data)) })
+      mark.select('text')
+        .transition().duration(750)
+        .attr('y', function(d) { return scale(toUnix(data)) })
+        .text(data.format('H:mm'))
+    })
+  }
+
+  function createMark(selection) {
+    selection.each(function(data) {
+      var mark = d3.select(this)
+      mark.append('circle')
+        .attr('cx', 0)
+        .attr('r', markerRadius)
+        .call(drag)
+      mark.append('text')
+        .attr('text-anchor', 'end')
+    })
+  }
+
+  function updateMarks(selection) {
+    selection.each(function(data) {
+      
+
+    })
+  }
+
+
+  function updateClipPath(selection) {
+    selection.each(function(data) {
+      d3.select(this)
+        .transition().duration(750)
+        .attr('x', '-20')
+        .attr('y', scale(toUnix(trim[0])))
+        .attr('width', 40)
+        .attr('height', scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
+    })
+  }
+
+  function updateEvents(selection) {
+    selection.each(function(data) {
+      function updateTick(selection) {
+        selection
+          .attr('d', function(d) {
+            var y = scale(toUnix(parseTime(d)))
+            return lineFun([
+              { x: -rangeWidth/2, y: y },
+              { x: rangeWidth/2, y: y }
+            ])
+          })
+      }
+      var tick = d3.select(this).selectAll('path')
+          .data(data)
+          
+      tick
+        .transition().duration(750)
+        .call(updateTick)
+
+      tick.enter()
+        .append('path')
+        .call(updateTick)
+
+      tick.exit()
+        .remove()
+    })
+  }
+
+  /*
+  function dragmove(d) {
+    var thisOne = d.i,
+        other = (thisOne == 0) ? 1 : 0
+    var mod = 0
+    var pos = +d3.select(this).attr('cy') + d3.event.dy
+    if (d.i == 0) {
+      mod = Math.min(Math.max(scale(toUnix(outerBounds[0])) + 1, pos), scale(toUnix(trim[other])))
+      trim = [ fromUnix(scale.invert(mod)), trim[1] ]
+    }
+    else {
+      mod = Math.max(Math.min(scale(toUnix(outerBounds[1])) - 1, pos), scale(toUnix(trim[other])))
+      trim = [ trim[0], fromUnix(scale.invert(mod)) ]
+    }
+    d3.select(this)
+      .attr('cy', mod);
+    d3.select(this.parentNode.parentNode).select('#clip-rect')
+      .attr('y', scale(toUnix(trim[0])))
+      .attr('height', scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
     onUpdate()
   }
 
@@ -135,21 +238,33 @@ function timetrim(params) {
     onUpdate()
   }
 
+
   var drag = d3.behavior.drag()
-    .on("drag", dragmove)
-    .on("dragend", dragend)
+    .on('drag', dragmove)
+    .on('dragend', dragend)
+  */
 
   function updateTrimMarkers(selection) {
 
-    selection.each(function(data) {
-      function updateCircle(selection) {
-        selection
-          .attr("cx", 0)
-          .attr("cy", function(d) { return scale(toUnix(d.value)) })
-          .attr("r", markerRadius)        
-      }
+    function updateCircle(selection) {
+      selection
+        .select('circle')
+          .attr('cx', 0)
+          .attr('cy', function(d) { return scale(toUnix(d.value)) })
+          .attr('r', markerRadius)
+    }
 
-      var circle = d3.select(this).selectAll("circle")
+    function updateMarker(selection) {
+      selection
+        .attr('cx', 0)
+        .attr('cy', function(d) { return scale(toUnix(d.value)) })
+        .attr('r', markerRadius)
+    }
+
+    
+    selection.each(function(data) {
+
+      var circle = d3.select(this).selectAll('circle')
           .data(trim.map(function(d, i) { return { value: d, i: i } }))
 
       circle
@@ -157,21 +272,37 @@ function timetrim(params) {
         .call(updateCircle)
 
       circle
-        .enter().append("circle")
+        .enter().append('circle')
         .call(updateCircle)
         .call(drag)
 
-      circle.exit()
-        .transition().duration(750)
-        .remove()
     })
+    /* -- */
+    /*
+    selection.each(function(data) {
+
+      var usableTrim = trim.map(function(d, i) { return { value: d, i: i } })
+
+      var marker = d3.select(this).selectAll('g').data(usableTrim)
+
+      marker.enter()
+        .append('g')
+        .append('circle')
+        .call(updateMarker)
+      
+      marker
+        .transition().duration(750)
+        .call(updateMarker)
+
+    })
+    /* -- */  
   }
 
   function formatTime(d) {
     function readable(h, m, s) {
       h = (h != 0) ? h.toString() + 'h ' : ''
       m = (m != 0) ? m.toString() + '\' ' : ''
-      s = (s != 0) ? s.toString() + '\" ' : ''
+      s = (s != 0) ? s.toString() + '\' ' : ''
       return h + m + s
     }
     var hours = Math.floor(d / 3600)
@@ -199,9 +330,9 @@ function timetrim(params) {
     return chart
   };
 
-  chart.domain = function(_) {
-    if (!arguments.length) return domain
-    domain = _.map(parseTime)
+  chart.outerBounds = function(_) {
+    if (!arguments.length) return outerBounds
+    outerBounds = _.map(parseTime)
     return chart
   }
 

@@ -7,14 +7,43 @@
   -ms-user-select: none;
   user-select: none;
 }
-.events circle {
-  fill: rgba(155, 155, 155, 0.5);
+
+.trim text {
+  cursor: default;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;  
 }
+
 .trim circle {
   fill: white;
-  stroke: gray;
+  stroke: #bdc3c7;
   stroke-width: 2;
 }
 .trim circle:hover {
+}
 
+.axis path {
+  stroke: #bdc3c7;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.events rect {
+  fill: white;
+  stroke: #bdc3c7;
+  stroke-width: 2;  
+}
+
+.events path {
+  stroke: #bdc3c7;
+  stroke-width: 4;
+}
+
+.events circle {
+  fill: #bdc3c7;
 }
