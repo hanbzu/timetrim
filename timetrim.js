@@ -60,8 +60,10 @@ function timetrim(params) {
       // 4. Trim markers
       //gEnter.append('g').attr('class', 'trim')
       gEnter.append('g').attr('class', 'trim from')
+        .datum(trim[0])
         .call(createMark)
       gEnter.append('g').attr('class', 'trim to')
+        .datum(trim[1])
         .call(createMark)
             
       // Update outer dimensions
@@ -84,16 +86,20 @@ function timetrim(params) {
           .attr('transform', 'translate(' + 0 + ', 0)')
           .call(updateTrimMarkers)
       */
-      g.select('.from').datum(trim[0])
-        .call(updateMark)
-      g.select('.to').datum(trim[1])
-        .call(updateMark)
+      //g.select('.from').datum(trim[0])
+      //  .call(updateMark)
+      //g.select('.to').datum(trim[1])
+      //  .call(updateMark)
     })
   }
 
 
   function dragmove(d) {
-    var yPixel = +d3.select(this).attr('cy') + d3.event.dy
+    var yTranslation = d3.transform(d3.select(this.parentNode).attr('transform')).translate[1]
+    var yPixel = yTranslation + d3.event.dy
+    console.log(yTranslation, yPixel)
+    //var yPixel = +d3.select(this).attr('cy') + d3.event.dy
+    //var yPixel = d3.event.y
 
     function computeValue(bounds) {
       bounds = bounds.map(toUnix).map(scale)
@@ -101,23 +107,32 @@ function timetrim(params) {
       return fromUnix(scale.invert(yPixel))
     }
 
+    /*
     if (d3.select(this.parentNode).classed('from')) // from
       trim = [ computeValue([ outerBounds[0], trim[1] ]), trim[1] ]
     else // to
       trim = [ trim[0], computeValue([ trim[0], outerBounds[1] ]) ]
 
+    /*
     d3.select(this)
       .attr('cy', yPixel)
     d3.select(this.parentNode).select('text')
       .attr('cy', yPixel)
+    */
+    d3.select(this.parentNode)
+      //.datum(trim[0])
+      //.call(updateMark)
+      .attr('transform', 'translate(0, ' + yPixel + ')')
+    /*
     d3.select(this.parentNode.parentNode).select('#clip-rect')
       .attr('y', scale(toUnix(trim[0])))
       .attr('height', scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
-    onUpdate()
+    */
+    //onUpdate()
   }
 
   function dragend(d) {
-    onUpdate()
+    //onUpdate()
   }
 
   var drag = d3.behavior.drag()
@@ -126,21 +141,28 @@ function timetrim(params) {
 
   function updateMark(selection) {
     selection.each(function(data) {
-      console.log(data)
+      console.log('updateMark ' + data.format('H:mm'))
+      //console.log(data)
       var mark = d3.select(this)
+        .transition().duration(750)
+          .attr('transform', 'translate(0, ' + scale(toUnix(data)) + ')')
+      /*
       mark.select('circle')
         .transition().duration(750)
         .attr('cy', function(d) { return scale(toUnix(data)) })
+      */
       mark.select('text')
-        .transition().duration(750)
-        .attr('y', function(d) { return scale(toUnix(data)) })
+        //.transition().duration(750)
+        //.attr('y', function(d) { return scale(toUnix(data)) })
         .text(data.format('H:mm'))
     })
   }
 
   function createMark(selection) {
+    console.log('createMark')
     selection.each(function(data) {
       var mark = d3.select(this)
+        .attr('transform', 'translate(0, ' + scale(toUnix(data)) + ')')
       mark.append('circle')
         .attr('cx', 0)
         .attr('r', markerRadius)
