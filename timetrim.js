@@ -58,7 +58,6 @@ function timetrim(params) {
         .append('rect')
           .attr('x', -rangeWidth/2).attr('y', 0).attr('width', rangeWidth).attr('height', scale.range()[1])
       // 4. Trim markers
-      //gEnter.append('g').attr('class', 'trim')
       gEnter.append('g').attr('class', 'trim from')
         .datum(trim[0])
         .call(createMark)
@@ -82,103 +81,69 @@ function timetrim(params) {
       // Update trim limits
       g.select('#clip-rect')
           .call(updateClipPath)
-      /*g.select('.trim')
-          .attr('transform', 'translate(' + 0 + ', 0)')
-          .call(updateTrimMarkers)
-      */
-      //g.select('.from').datum(trim[0])
-      //  .call(updateMark)
-      //g.select('.to').datum(trim[1])
-      //  .call(updateMark)
+      g.select('.from').datum(trim[0])
+        .call(updateMark)
+      g.select('.to').datum(trim[1])
+        .call(updateMark)
     })
   }
 
 
   function dragmove(d) {
-    var yTranslation = d3.transform(d3.select(this.parentNode).attr('transform')).translate[1]
-    var yPixel = yTranslation + d3.event.dy
-    console.log(yTranslation, yPixel)
-    //var yPixel = +d3.select(this).attr('cy') + d3.event.dy
-    //var yPixel = d3.event.y
+    var yPixel = d3.transform(d3.select(this).attr('transform')).translate[1] + d3.event.dy,
+        newValue = 0
 
     function computeValue(bounds) {
       bounds = bounds.map(toUnix).map(scale)
       yPixel = Math.max(bounds[0], Math.min(yPixel, bounds[1]))
-      return fromUnix(scale.invert(yPixel))
+      newValue = fromUnix(scale.invert(yPixel)) 
+      return newValue
     }
 
-    /*
-    if (d3.select(this.parentNode).classed('from')) // from
+    if (d3.select(this).classed('from')) // from
       trim = [ computeValue([ outerBounds[0], trim[1] ]), trim[1] ]
     else // to
       trim = [ trim[0], computeValue([ trim[0], outerBounds[1] ]) ]
 
-    /*
     d3.select(this)
-      .attr('cy', yPixel)
-    d3.select(this.parentNode).select('text')
-      .attr('cy', yPixel)
-    */
-    d3.select(this.parentNode)
-      //.datum(trim[0])
-      //.call(updateMark)
+      .datum(newValue)
       .attr('transform', 'translate(0, ' + yPixel + ')')
-    /*
+    d3.select(this).select('text').text(newValue.format('H:mm'))
     d3.select(this.parentNode.parentNode).select('#clip-rect')
       .attr('y', scale(toUnix(trim[0])))
       .attr('height', scale(toUnix(trim[1])) - scale(toUnix(trim[0])))
-    */
-    //onUpdate()
-  }
-
-  function dragend(d) {
-    //onUpdate()
+    onUpdate()
   }
 
   var drag = d3.behavior.drag()
     .on('drag', dragmove)
-    .on('dragend', dragend)
+    .on('dragend', onUpdate)
 
   function updateMark(selection) {
     selection.each(function(data) {
       console.log('updateMark ' + data.format('H:mm'))
-      //console.log(data)
       var mark = d3.select(this)
         .transition().duration(750)
           .attr('transform', 'translate(0, ' + scale(toUnix(data)) + ')')
-      /*
-      mark.select('circle')
-        .transition().duration(750)
-        .attr('cy', function(d) { return scale(toUnix(data)) })
-      */
       mark.select('text')
-        //.transition().duration(750)
-        //.attr('y', function(d) { return scale(toUnix(data)) })
         .text(data.format('H:mm'))
     })
   }
 
   function createMark(selection) {
-    console.log('createMark')
     selection.each(function(data) {
       var mark = d3.select(this)
         .attr('transform', 'translate(0, ' + scale(toUnix(data)) + ')')
+        .call(drag)
       mark.append('circle')
         .attr('cx', 0)
         .attr('r', markerRadius)
-        .call(drag)
       mark.append('text')
+        .attr('x', -markerRadius -10)
+        .attr('y', 8) // Depends on the font size -- should be externally configurable
         .attr('text-anchor', 'end')
     })
   }
-
-  function updateMarks(selection) {
-    selection.each(function(data) {
-      
-
-    })
-  }
-
 
   function updateClipPath(selection) {
     selection.each(function(data) {
@@ -217,20 +182,6 @@ function timetrim(params) {
       tick.exit()
         .remove()
     })
-  }
-
-  function formatTime(d) {
-    function readable(h, m, s) {
-      h = (h != 0) ? h.toString() + 'h ' : ''
-      m = (m != 0) ? m.toString() + '\' ' : ''
-      s = (s != 0) ? s.toString() + '\' ' : ''
-      return h + m + s
-    }
-    var hours = Math.floor(d / 3600)
-    d -= hours * 3600
-    var minutes = Math.floor(d / 60)
-    var secs = d - minutes * 60 
-    return readable(hours, minutes, secs)
   }
 
   chart.margin = function(_) {

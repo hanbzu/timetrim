@@ -15,7 +15,10 @@
   -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-  user-select: none;  
+  user-select: none;
+  font-family: 'Helvetica Neue', 'Helvetica', sans-serif;
+  font-size: 25px;
+  fill: #bdc3c7;
 }
 
 .trim circle {
