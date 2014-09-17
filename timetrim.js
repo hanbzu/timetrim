@@ -117,7 +117,7 @@ function timetrim(params) {
 
   var drag = d3.behavior.drag()
     .on('drag', dragmove)
-    .on('dragend', onUpdate)
+    .on('dragend', function() { onUpdate() })
 
   function updateMark(selection) {
     selection.each(function(data) {
