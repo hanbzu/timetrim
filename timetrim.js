@@ -215,7 +215,6 @@ function timetrim(params) {
   }
 
   chart.onUpdate = function(_) {
-    if (!arguments.length) return trim
     onUpdate = _
     return chart
   }
