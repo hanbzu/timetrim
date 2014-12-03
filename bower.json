@@ -16,6 +16,6 @@
   ],
   "dependencies": {
     "d3": "~3",
-    "moment": "~2.7.0"
+    "moment": "~2"
   }
 }
